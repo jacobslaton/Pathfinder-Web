@@ -2,7 +2,9 @@ create database Bestiary;
 use Bestiary;
 
 -- Enums --
-create type Alignment as enum (
+-- select * from pg_enum;
+
+create type alignment as enum (
 	'Unaligned',
 	'LG', 'NG', 'CG',
 	'LN',  'N', 'CN',
@@ -44,7 +46,7 @@ create type Alignment as enum (
 -- 1110 - 14  - Any Good
 -- 1111 - 15  - Any
 
-create type AlignmentSpecifier as enum (
+create type alignment_specifier as enum (
 	'Unaligned',
 	'LG', 'NG', 'CG',
 	'LN',  'N', 'CN',
@@ -52,7 +54,7 @@ create type AlignmentSpecifier as enum (
 	'AL', 'AG', 'AN', 'AE', 'AC', 'A'
 );
 
-create type Role as enum (
+create type role as enum (
 	'None',
 	'Combat',
 	'Skill',
@@ -74,7 +76,7 @@ create type Climate as enum (
 	'Temperate',
 	'Warm'
 );
-create type CreatureSize as enum (
+create type creature_size as enum (
 	'Fine',
 	'Diminutive',
 	'Tiny',
@@ -85,7 +87,7 @@ create type CreatureSize as enum (
 	'Gargantuan',
 	'Colossal'
 );
-create type CreatureType as enum (
+create type creature_type as enum (
 	'Abberation',
 	'Animal',
 	'Construct',
@@ -100,7 +102,7 @@ create type CreatureType as enum (
 	'Undead',
 	'Vermin'
 );
-create type Maneuverability as enum (
+create type maneuverability as enum (
 	'Clumsy',
 	'Poor',
 	'Average',
@@ -257,9 +259,10 @@ create table CreatureEnvironmentsMap (
 	EnvironmentId   smallint
 );
 
-create table CreatureSubtypes (
-	Id              smallint,
-	Subtype         varchar(255)
+create table creature_subtypes (
+	id              uuid not null,
+	subtype         varchar(255),
+	primary key (id)
 );
 insert into CreatureSubtypes
 values
@@ -286,36 +289,38 @@ create table CreatureSubtypesMap (
 
 
 -- Large Tables --
-create table BaseCreatures (
-	Name				varchar(255),
-	Cr					tinyint,
-	SourceId			tinyint,
-	Page				smallint,
-	AlignmentId			tinyint,
-	CreatureSize		CreatureSize,
-	CreatureType		CreatureType,
-	Initiative			tinyint,
-	Ac					tinyint,
-	AcFf				tinyint,
-	AcTouch				tinyint,
-	Hp					tinyint,
-	Hd					tinyint,
-	Fort				tinyint,
-	Ref					tinyint,
-	Will				tinyint,
-	Sr					tinyint,
-	Bab					tinyint,
-	Cmb					tinyint,
-	Cmd					tinyint,
-	Treasure			tinyint,
-	DescriptionVisual	varchar(),
-	Description			varchar(),
-	SpeedBurrow			tinyint,
-	SpeedClimb			tinyint,
-	SpeedFly			tinyint,
-	Maneuverability		Maneuverability,
-	SpeedLand			tinyint,
-	SpeedSwim			tinyint
+create table base_creatures (
+	creature_name		varchar(255) not null primary key,
+	cr					real not null,
+	source_id			smallint not null,
+	page				smallint,
+	alignment			alignment not null,
+	creature_size		creature_size not null,
+	creature_type		creature_type not null,
+	initiative			smallint not null,
+	ac					smallint not null,
+	ac_touch			smallint not null,
+	ac_ff				smallint not null,
+	hp					smallint not null,
+	hd_count			smallint not null,
+	hd_size				smallint not null,
+	fort				smallint not null,
+	ref					smallint not null,
+	will				smallint not null,
+	sr					smallint,
+	bab					smallint not null,
+	cmb					smallint not null,
+	cmd					smallint not null,
+	description_visual	varchar(500),
+	description			varchar(5000),
+	speed_burrow		smallint not null,
+	speed_climb			smallint not null,
+	speed_fly			smallint not null,
+	maneuverability		maneuverability,
+	speed_land			smallint not null,
+	speed_swim			smallint not null,
+	variant_parent		varchar(255),
+	alternate_name		varchar(255)
 );
 create table Races ();
 create table Templates ();
