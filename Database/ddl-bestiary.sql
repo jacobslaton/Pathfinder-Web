@@ -1,5 +1,9 @@
-create database bestiary;
-use bestiary;
+-- This should work with other flavors of sql, but not postgresql.
+-- Make sure to create and connect to a bestiary database before running this script.
+
+--create database bestiary;
+--use bestiary;
+
 create extension if not exists "uuid-ossp";
 
 
@@ -49,7 +53,7 @@ create type maneuverability as enum (
 ---------------------
 
 create function uuidHash(namespace text, string text)
-returns text as $hash$
+returns uuid as $hash$
 begin
 	return uuid_generate_v5((select namespace_uuid from uuid_namespaces where namespace_name = namespace), string);
 end;
@@ -68,17 +72,17 @@ create table uuid_namespaces (
 
 create table sources (
 	source_uuid         uuid not null,
-	source_name         varchar(256) not null,
+	source_title        varchar(256) not null,
 	isbn                char(17),
 	is_official         boolean,
 	primary key (source_uuid)
 );
 
-create function createSource(source text, isbn text, isOfficial boolean)
+create function createSource(sourceTitle text, isbn text, isOfficial boolean)
 returns void as $$
 begin
-	insert into sources (source_id, isbn, source_name, is_official) values (
-		uuidHash('sources', source), isbn, source, isOfficial
+	insert into sources (source_uuid, isbn, source_title, is_official) values (
+		uuidHash('sources', sourceTitle), isbn, sourceTitle, isOfficial
 	);
 end;
 $$ language plpgsql;
@@ -127,7 +131,7 @@ create table base_creatures (
 	alternate_name      varchar(256),
 	primary key (creature_uuid),
 	foreign key (source_uuid) references sources (source_uuid),
-	foreign key (variant_parent) references sources (creature_uuid)
+	foreign key (variant_parent) references base_creatures (creature_uuid)
 );
 
 
@@ -138,18 +142,18 @@ create table base_creatures (
 create table subtypes (
 	subtype_uuid      uuid not null,
 	subtype_name      varchar(256) not null,
-	source_uuid       uuid not null
+	source_uuid       uuid not null,
 	primary key (subtype_uuid),
 	foreign key (source_uuid) references sources (source_uuid)
 );
 
-create function createSubtype(source text, subtype text)
+create function createSubtype(sourceTitle text, subtype text)
 returns void as $$
 begin
 	insert into subtypes values (
 		uuid_generate_v5((select namespace_uuid from uuid_namespaces where namespace_name = 'subtypes'), subtype),
 		subtype,
-		(select source_uuid from sources where source_name = source)
+		(select source_uuid from sources where source_title = sourceTitle)
 	);
 end;
 $$ language plpgsql;
