@@ -1,0 +1,9 @@
+{
+    "coinageNegativeCoins": "${type} pieces cannot be negative.",
+    "databaseNotUnique": "The data you were looking for is not unique and should be.",
+    "expectedPositiveInt": "Property ${property} must be a positive integer.",
+    "expectedString": "Property ${property} must be a string",
+    "expectedUnsignedInt": "Property ${property} must be an unsigned integer",
+    "propertyMissing": "${objName} does not have the ${property} property.",
+    "propertyRequired": "Property ${property} is required."
+}

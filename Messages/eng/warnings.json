@@ -1,0 +1,6 @@
+{
+    "coinageSupported": "The supported units of currency are platinum, gold, electrum, silver, and copper.",
+    "coinageUnsupported": "The unit of currency \"${type}\" is not supported.",
+    "coinageZeroCoins": "Number of ${type} pieces is zero.",
+	"lookupNoResults": "No results for ${name}"
+}
