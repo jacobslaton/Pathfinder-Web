@@ -150,6 +150,176 @@ app.get("/utility/split-gold", async function(req, res) {
 	});
 });
 
+function parsePositiveInt(errors, obj, property) {
+	if (!(property in obj)) {
+		console.log(errorMessages);
+		errors.push(
+			errorMessages.propertyRequired
+				.replace("${property}", `${property}`)
+		);
+	}
+	let data = parseInt(obj[property], 10);
+	if (isNaN(data) || data != parseFloat(obj[property]) || data <= 0) {
+		errors.push(
+			errorMessages.expectedPositiveInt
+				.replace("${property}", `${property}`)
+		);
+	}
+	return data;
+}
+function parseUnsignedInt(errors, obj, property) {
+	if (!(property in obj)) {
+		errors.push(
+			errorMessages.propertyRequired
+				.replace("${property}", `${property}`)
+		);
+	}
+	let data = parseInt(obj[property], 10);
+	if (isNaN(data) || data != parseFloat(obj[property]) || data < 0) {
+		errors.push(
+			errorMessages.expectedUnsignedInt
+				.replace("${property}", `${property}`)
+		);
+	}
+	return data;
+}
+function parseCoins(errors, warnings, obj, property, { objName = "Object" } = {}) {
+	let coins = {};
+	if (!(property in obj)) {
+		errors.push(
+			errorMessages.propertyMissing
+				.replace("${objName}", `${objName}`)
+				.replace("${property}", `${property}`)
+		);
+		return coins;
+	}
+
+	const coinTypes = ["platinum", "gold", "electrum", "silver", "copper"];
+	coinTypes.forEach(type => {
+		if (obj.coins[type] === undefined) return;
+		let pieces = parseUnsignedInt(errors, obj.coins, type);
+		if (!isNaN(pieces)) {
+			if (pieces > 0) {
+				coins[type] = pieces;
+			} else if (pieces < 0) {
+				errors.push(
+					errorMessages.coinageNegativeCoins
+						.replace("${type}", `${type}`)
+				);
+			} else {
+				warnings.push(
+					warningMessages.coinageZeroCoins
+						.replace("${type}", `${type}`)
+				);
+			}
+		}
+	});
+
+	let addedWarning = false;
+	Object.keys(obj.coins).forEach((key) => {
+		if (coinTypes.indexOf(key) == -1) {
+			addedWarning = true;
+			warnings.push(
+				warningMessages.coinageUnsupported
+					.replace("${type}", `${type}`)
+			);
+		}
+	});
+	if (addedWarning) warnings.push(warningMessages.coinageSupported);
+	return coins;
+}
+function sumCoins(obj) {
+	let gp = 0;
+	const coinTypes = {
+		"platinum": 10,
+		"gold": 1,
+		"electrum": 0.5,
+		"silver": 0.1,
+		"copper": 0.01
+	};
+	for (type in obj) gp += obj[type] * coinTypes[type];
+	return gp;
+}
+
+app.get("/utility/calculate-exp", async function(req, res) {
+	let status = 200;
+	let errors = [];
+	let warnings = [];
+
+	let currentExp = parseUnsignedInt(errors, req.body, "currentExp");
+	let coins = parseCoins(errors, warnings, req.body, "coins");
+	if (errors.length > 0) {
+		res.status(400).json({ "meta": meta(errors, warnings) });
+		return;
+	}
+
+	// Logic goes here
+	const progression = {
+		1:  { "exp":       0, "gold":      0 },
+		2:  { "exp":    2000, "gold":   1000 },
+		3:  { "exp":    3000, "gold":   3000 },
+		4:  { "exp":    4000, "gold":   6000 },
+		5:  { "exp":    6000, "gold":  10500 },
+		6:  { "exp":    8000, "gold":  16000 },
+		7:  { "exp":   12000, "gold":  23500 },
+		8:  { "exp":   16000, "gold":  33000 },
+		9:  { "exp":   24000, "gold":  46000 },
+		10: { "exp":   30000, "gold":  62000 },
+		11: { "exp":   50000, "gold":  82000 },
+		12: { "exp":   65000, "gold": 108000 },
+		13: { "exp":   95000, "gold": 140000 },
+		14: { "exp":  130000, "gold": 185000 },
+		15: { "exp":  190000, "gold": 240000 },
+		16: { "exp":  255000, "gold": 315000 },
+		17: { "exp":  410000, "gold": 410000 },
+		18: { "exp":  500000, "gold": 530000 },
+		19: { "exp":  750000, "gold": 685000 },
+		20: { "exp": 1050000, "gold": 880000 }
+	};
+	let nextLevel = 1;
+	let runningExpTotal = runningExpTotal = progression[nextLevel]["exp"];
+	for (; runningExpTotal < currentExp && nextLevel <= 20; ++nextLevel) {
+		console.log(runningExpTotal);
+		runningExpTotal += progression[nextLevel]["exp"];
+	}
+	--nextLevel;
+	console.log(runningExpTotal);
+
+	console.log(0.8 * progression[nextLevel]["exp"] / progression[nextLevel]["gold"]);
+
+	res.status(status).json({
+		"level": nextLevel,
+		"totalExp": 0,
+		"meta": meta(errors, warnings)
+	});
+});
+
+app.get("/utility/split-gold", async function(req, res) {
+	let status = 200;
+	let errors = [];
+	let warnings = [];
+
+	let partySize = parsePositiveInt(errors, req.body, "partySize");
+	let coins = parseCoins(errors, warnings, req.body, "coins", { objName: "Request" });
+	if (errors.length > 0) {
+		res.status(400).json({ "meta": meta(errors, warnings) });
+		return;
+	}
+
+	let share = {};
+	let remainder = {};
+	Object.keys(coins).forEach((key) => {
+		share[key] = Math.floor(coins[key] / partySize);
+		remainder[key] = coins[key] % partySize;
+	});
+
+	res.status(status).json({
+		"share": share,
+		"remainder": remainder,
+		"meta": meta(errors, warnings)
+	});
+});
+
 // Notes for website backend in the future
 
 // app.get("/", function(req, res) {
