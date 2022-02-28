@@ -106,7 +106,6 @@ create table sources (
 	primary key (uuid),
 	check (not title = ''),
 	check (uuid = uuidHash('sources', title)),
-	unique (uuid, title),
 	check (not abbreviation = ''),
 	unique (isbn)
 );
@@ -174,7 +173,6 @@ create table base_creatures (
 	primary key (uuid),
 	check (not name = ''),
 	check (uuid = uuidHash('base_creatures', name)),
-	unique (uuid, name),
 	check (cr > -5),
 	foreign key (source_uuid) references sources (uuid),
 	check (page > 0),
@@ -208,8 +206,7 @@ create table subtypes (
 	primary key (uuid),
 	foreign key (source_uuid) references sources (uuid),
 	check (not name = ''),
-	check (uuid = uuidHash('subtypes', name)),
-	unique (uuid, name)
+	check (uuid = uuidHash('subtypes', name))
 );
 
 create procedure createSubtype(
@@ -230,8 +227,7 @@ create table map_base_creature_subtype (
 	creature_uuid     uuid not null,
 	subtype_uuid      uuid not null,
 	foreign key (creature_uuid) references base_creatures (uuid),
-	foreign key (subtype_uuid) references subtypes (uuid),
-	unique (creature_uuid, subtype_uuid)
+	foreign key (subtype_uuid) references subtypes (uuid)
 );
 
 create procedure addSubtype(
@@ -314,8 +310,7 @@ create table planes (
 	trait_magic         plane_magic_traits,
 	primary key (uuid),
 	check (not name = ''),
-	check (uuid = uuidHash('planes', name)),
-	unique (uuid, name)
+	check (uuid = uuidHash('planes', name))
 );
 
 ------------------
@@ -327,8 +322,7 @@ create table terrains (
 	name                varchar(256) not null,
 	primary key (uuid),
 	check (not name = ''),
-	check (uuid = uuidHash('terrains', name)),
-	unique (uuid, name)
+	check (uuid = uuidHash('terrains', name))
 );
 create type climate as enum (
 	'cold',
@@ -346,8 +340,7 @@ create table environments (
 	check (uuid = uuidHash('environments', concat(
 		plane_uuid, '|', terrain_uuid, '|', climate
 	))),
-	check (not (plane_uuid is null and terrain_uuid is null and climate is null)),
-	unique (uuid, plane_uuid, terrain_uuid, climate)
+	check (not (plane_uuid is null and terrain_uuid is null and climate is null))
 );
 create table map_base_creature_environment (
 	creature_uuid       uuid not null,

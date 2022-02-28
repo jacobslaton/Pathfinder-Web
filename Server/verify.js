@@ -1,84 +1,84 @@
 const utility = require("./utility.js");
+const models = require("./models.js");
 
 const messages = utility.loadMessages();
 
-exports.string = (errors, obj, property) => {
+function string(errors, obj, property) {
 	if (!(property in obj)) {
 		errors.push(
-			errorMessages.propertyRequired
+			messages.errors.propertyRequired
 				.replace("${property}", `${property}`)
 		);
 	}
 	const data = obj[property];
 	if (data === null || data === undefined || !isNaN(parseFloat(data))) {
 		errors.push(
-			errorMessages.expectedString
+			messages.errors.expectedString
 				.replace("${property}", `${property}`)
 		);
 	}
 	return data;
 }
-exports.positiveInt = (errors, obj, property) => {
+function positiveInt(errors, obj, property) {
 	if (!(property in obj)) {
-		console.log(errorMessages);
 		errors.push(
-			errorMessages.propertyRequired
+			messages.errors.propertyRequired
 				.replace("${property}", `${property}`)
 		);
 	}
 	let data = parseInt(obj[property], 10);
 	if (isNaN(data) || data != parseFloat(obj[property]) || data <= 0) {
 		errors.push(
-			errorMessages.expectedPositiveInt
+			messages.errors.expectedPositiveInt
 				.replace("${property}", `${property}`)
 		);
 	}
 	return data;
 }
-exports.unsignedInt = (errors, obj, property) => {
+function unsignedInt(errors, obj, property) {
 	if (!(property in obj)) {
 		errors.push(
-			errorMessages.propertyRequired
+			messages.errors.propertyRequired
 				.replace("${property}", `${property}`)
 		);
 	}
 	let data = parseInt(obj[property], 10);
 	if (isNaN(data) || data != parseFloat(obj[property]) || data < 0) {
 		errors.push(
-			errorMessages.expectedUnsignedInt
+			messages.errors.expectedUnsignedInt
 				.replace("${property}", `${property}`)
 		);
 	}
 	return data;
 }
-exports.Coins = (errors, warnings, obj, property, { objName = "Object" } = {}) => {
+function Coins(errors, warnings, obj, property, { objName = "Object" } = {}) {
 	let coins = {};
 	if (!(property in obj)) {
 		errors.push(
-			errorMessages.propertyMissing
+			messages.errors.propertyMissing
 				.replace("${objName}", `${objName}`)
 				.replace("${property}", `${property}`)
 		);
 		return coins;
 	}
 
-	coinTypes.forEach(type => {
+	models.coinTypes.forEach(type => {
 		if (obj.coins[type] === undefined) {
 			coins[type] = 0;
 			return;
 		}
-		let pieces = parseUnsignedInt(errors, obj.coins, type);
+		let pieces = unsignedInt(errors, obj.coins, type);
 		if (!isNaN(pieces)) {
 			if (pieces > 0) {
 				coins[type] = pieces;
 			} else if (pieces < 0) {
 				errors.push(
-					errorMessages.coinageNegativeCoins
+					messages.errors.coinageNegativeCoins
 						.replace("${type}", `${type}`)
 				);
 			} else {
 				warnings.push(
-					warningMessages.coinageZeroCoins
+					messages.warnings.coinageZeroCoins
 						.replace("${type}", `${type}`)
 				);
 			}
@@ -87,14 +87,19 @@ exports.Coins = (errors, warnings, obj, property, { objName = "Object" } = {}) =
 
 	let addedWarning = false;
 	Object.keys(obj.coins).forEach((type) => {
-		if (coinTypes.indexOf(type) == -1) {
+		if (models.coinTypes.indexOf(type) == -1) {
 			addedWarning = true;
 			warnings.push(
-				warningMessages.coinageUnsupported
+				messages.warnings.coinageUnsupported
 					.replace("${type}", `${type}`)
 			);
 		}
 	});
-	if (addedWarning) warnings.push(warningMessages.coinageSupported);
+	if (addedWarning) warnings.push(messages.warnings.coinageSupported);
 	return coins;
 }
+
+exports.string = string;
+exports.positiveInt = positiveInt;
+exports.unsignedInt = unsignedInt;
+exports.Coins = Coins;

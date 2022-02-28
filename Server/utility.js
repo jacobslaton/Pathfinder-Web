@@ -1,6 +1,5 @@
 const fs = require("fs");
-
-const coinTypes = ["platinum", "gold", "electrum", "silver", "copper"];
+const models = require("./models.js");
 
 exports.loadMessages = (langaugeCode = "eng") => {
 	const errors = JSON.parse(fs.readFileSync(`${process.env.MESSAGES}/${langaugeCode}/errors.json`));
@@ -20,8 +19,8 @@ exports.sumCoins = (obj) => {
 	return gp;
 }
 exports.addCoins = (lhs, rhs) => {
-	let result = Coins();
-	coinTypes.forEach(type => {
+	let result = models.Coins();
+	models.coinTypes.forEach(type => {
 		console.log(lhs[type], "+", rhs[type]);
 	});
 }
