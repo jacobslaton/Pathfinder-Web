@@ -11,8 +11,10 @@ drop procedure if exists createPlane;
 drop procedure if exists createEnvironment;
 drop table if exists map_base_creature_environment;
 drop table if exists environments;
+drop function if exists keyEnvironment;
 drop type if exists climate;
 drop table if exists terrains;
+drop table if exists plane_magic;
 drop table if exists planes;
 drop type if exists plane_magic_traits;
 drop type if exists plane_alignment_traits;
@@ -165,9 +167,9 @@ create table base_creatures (
 	speed_land          smallint not null,
 	speed_swim          smallint not null,
 	role_combat			boolean not null,
-	role_spell			boolean not null,
 	role_skill			boolean not null,
 	role_special		boolean not null,
+	role_spell			boolean not null,
 	variant_parent      uuid,
 	alternate_name      varchar(256),
 	primary key (uuid),
@@ -275,12 +277,14 @@ create type plane_structural_traits as enum (
 );
 create type plane_essence_traits as enum (
 	'Mixed Essence',
-	'Air-Essence',
-	'Earth-Essence',
-	'Fire-Essence',
-	'Water-Essence',
-	'Negative-Essence',
-	'Positive-Essence'
+	'Air-Dominant',
+	'Earth-Dominant',
+	'Fire-Dominant',
+	'Water-Dominant',
+	'Minor Negative-Dominant',
+	'Major Negative-Dominant',
+	'Minor Positive-Dominant',
+	'Major Positive-Dominant'
 );
 create type plane_alignment_traits as enum (
 	'Unaligned',
@@ -307,16 +311,27 @@ create table planes (
 	trait_alignment     plane_alignment_traits,
 	alignment_ethical   alignment_ethical,
 	alignment_moral     alignment_moral,
-	trait_magic         plane_magic_traits,
 	primary key (uuid),
 	check (not name = ''),
 	check (uuid = uuidHash('planes', name))
+);
+
+create table plane_magic (
+	plane_uuid          uuid not null,
+	trait_magic         plane_magic_traits not null,
+	description         text,
+	foreign key (plane_uuid) references planes (uuid)
 );
 
 ------------------
 -- environments --
 ------------------
 
+create type climate as enum (
+	'Cold',
+	'Temperate',
+	'Warm'
+);
 create table terrains (
 	uuid                uuid not null,
 	name                varchar(256) not null,
@@ -324,50 +339,67 @@ create table terrains (
 	check (not name = ''),
 	check (uuid = uuidHash('terrains', name))
 );
-create type climate as enum (
-	'cold',
-	'temperate',
-	'warm'
-);
+
+create function keyEnvironment(
+	plane uuid,
+	climate climate,
+	terrain uuid
+)
+returns uuid as $hash$
+begin
+--	raise notice 'Environment Composite Key: %', concat(
+--		plane, '|', climate, '|', terrain
+--	);
+	return uuidHash('environments', concat(	plane, '|', climate, '|', terrain));
+end;
+$hash$ language plpgsql;
+
 create table environments (
 	uuid                uuid not null,
 	plane_uuid          uuid,
-	terrain_uuid        uuid,
 	climate             climate,
+	terrain_uuid        uuid,
 	primary key (uuid),
 	foreign key (plane_uuid) references planes (uuid),
 	foreign key (terrain_uuid) references terrains (uuid),
-	check (uuid = uuidHash('environments', concat(
-		plane_uuid, '|', terrain_uuid, '|', climate
-	))),
-	check (not (plane_uuid is null and terrain_uuid is null and climate is null))
+	check (uuid = keyEnvironment(plane_uuid, climate, terrain_uuid)),
+	check (not (plane_uuid is null and climate is null and terrain_uuid is null))
 );
 create table map_base_creature_environment (
 	creature_uuid       uuid not null,
+	include             boolean not null,
 	environment_uuid    uuid not null,
 	foreign key (creature_uuid) references base_creatures (uuid),
 	foreign key (environment_uuid) references environments (uuid),
-	unique (creature_uuid, environment_uuid)
+	unique (creature_uuid, include, environment_uuid)
 );
 
 create procedure createEnvironment(
 	plane               text,
-	terrain             text,
-	climate             climate
+	terrain             text
 )
 language plpgsql as $$
 declare
 	plane_uuid          uuid := uuidHash('planes', plane);
 	terrain_uuid        uuid := uuidHash('terrains', terrain);
 begin
-	insert into environments values (
-		uuidHash('environments', concat(
-			plane_uuid, '|', terrain_uuid, '|', climate
-		)),
-		plane_uuid,
-		terrain_uuid,
-		climate
-	);
+	insert into environments values
+		(
+			keyEnvironment(plane_uuid, null, terrain_uuid),
+			plane_uuid, null, terrain_uuid
+		),
+		(
+			keyEnvironment(plane_uuid, 'Cold', terrain_uuid),
+			plane_uuid, 'Cold', terrain_uuid
+		),
+		(
+			keyEnvironment(plane_uuid, 'Temperate', terrain_uuid),
+			plane_uuid, 'Temperate', terrain_uuid
+		),
+		(
+			keyEnvironment(plane_uuid, 'Warm', terrain_uuid),
+			plane_uuid, 'Warm', terrain_uuid
+		);
 	commit;
 end;$$;
 
@@ -375,7 +407,7 @@ create procedure createPlane(plane text)
 language plpgsql as $$
 begin
 	insert into planes values (uuidHash('planes', plane), plane);
-	call createEnvironment(plane, null, null);
+	call createEnvironment(plane, null);
 	commit;
 end;$$;
 
@@ -383,44 +415,23 @@ create procedure createTerrain(terrain text)
 language plpgsql as $$
 begin
 	insert into terrains values (uuidHash('terrains', terrain), terrain);
-	call createEnvironment(null, terrain, null);
+	call createEnvironment(null, terrain);
 	commit;
 end;$$;
 
 create procedure addEnvironment(
 	creature            text,
+	include             boolean,
 	plane               text,
-	terrain             text,
-	climate             climate
+	climate             climate,
+	terrain             text
 )
 language plpgsql as $$
 begin
-	raise notice 'Creature: %', creature;
-	raise notice 'Plane: %', plane;
-	raise notice 'Terrain: %', terrain;
-	raise notice 'Climate: %', climate;
-	-- perform uuid from planes where name = plane;
-	-- if not found then
-	-- 	call createPlane(plane);
-	-- end if;
-	-- perform uuid from terrains where name = terrain;
-	-- if not found then
-	-- 	call createTerrain(terrain);
-	-- end if;
-	-- perform uuid from environments
-	-- 	where plane_uuid = uuidHash('planes', plane)
-	-- 	and terrain_uuid = uuidHash('terrains', terrain)
-	-- 	and climate = climate;
-	-- if not found then
-	-- 	call createEnvironment(plane, terrain, climate);
-	-- end if;
 	insert into map_base_creature_environment values (
 		uuidHash('base_creatures', creature),
-		uuidHash('environments', concat(
-			uuidHash('planes', plane), '|',
-			uuidHash('terrains', terrain), '|',
-			climate
-		))
+		include,
+		keyEnvironment(uuidHash('planes', plane), climate, uuidHash('terrains', terrain))
 	);
 	commit;
 end;$$;
